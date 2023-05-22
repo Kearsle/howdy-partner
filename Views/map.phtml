@@ -1,0 +1,156 @@
+<?php require("template/header.phtml") ?>
+
+<?php
+if (!isset(($_SESSION["login"]))) {
+    echo '<h1>An Account is Required to use the Map.</h1>';
+} else { ?>
+
+    <div id="Map" style="width:800px;height:600px"></div>
+    <script src="OpenLayers-2.13.1/OpenLayers.js"></script>
+    <script>
+
+        //Creating the map
+
+        // Default zoom level when recentering.
+        var zoom = 16;
+
+        // Creating the map projection and mapnik layer
+        var fromProjection = new OpenLayers.Projection("EPSG:4326");   // Transform from WGS 1984
+        var toProjection = new OpenLayers.Projection("EPSG:900913"); // to Spherical Mercator Projection
+
+        map = new OpenLayers.Map("Map");
+        var mapnik = new OpenLayers.Layer.OSM();
+        map.addLayer(mapnik);
+
+        // Create markers layer
+        var markers = new OpenLayers.Layer.Markers( "Markers" );
+        map.addLayer(markers);
+
+        // default latitude and longitude in the event that the user denies location on their browser
+        var lat = 0;
+        var lon = 0;
+
+        var position = new OpenLayers.LonLat(lon, lat).transform( fromProjection, toProjection);
+
+        // if the user has geolocation enabled, set the map center to the users location. else user default parameters.
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position)
+            {
+                map.setCenter(new OpenLayers.LonLat(position.coords.longitude, position.coords.latitude).transform( fromProjection, toProjection), zoom);
+            });
+        } else {
+            console.log("Geolocation is not supported by this browser.");
+            map.setCenter(new OpenLayers.LonLat(lon, lat).transform( fromProjection, toProjection), zoom);
+        }
+
+        //Adding the friend Markers
+        getFriends();
+
+        // Refresh markers every 15 seconds
+        setInterval(function() {
+            getFriends();
+        }, 15000); // 15000 milliseconds == 15 seconds
+
+        // Deletes all markers on the marker layer
+        // then adds the users marker if geolocation is enabled
+        // for each friend, place a marker on their location
+        function setMarkers(friends) {
+            markers.clearMarkers();
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position)
+                {
+                    // Finding the current users location
+                    lat = position.coords.latitude;
+                    lon = position.coords.longitude;
+                    var userposition = new OpenLayers.LonLat(lon, lat).transform( fromProjection, toProjection);
+                    setLocation(lat, lon);
+
+                    //Current user marker
+                    markers.addMarker(new OpenLayers.Marker(userposition));
+                });
+            }
+            friends.forEach(function(friend) {
+                let mposition = new OpenLayers.LonLat(friend.longitude, friend.latitude).
+                transform(fromProjection, toProjection);
+                // place marker on the map layer
+                markers.addMarker(new OpenLayers.Marker(mposition));
+            });
+        }
+
+        // AJAX Get request for friends of the user
+        function getFriends() {
+            console.log("All Friend Locations Refreshed!");
+            var xmlhttp = new XMLHttpRequest();
+
+            xmlhttp.onreadystatechange = function() {
+                if (this.readyState == 4 && this.status == 200) {
+                    // response contains all information about the friend
+                    var response = JSON.parse(this.responseText);
+                    // sends friends information ot setMarker functoin
+                    setMarkers(response);
+                }
+            }
+            xmlhttp.open("GET", "getFriends.php?u=" + "<?php echo $_SESSION["login"] ?>", true);
+            xmlhttp.send();
+        }
+
+        // AJAX post request containing the logged in user's latitude and longitude.
+        // (Updates the current location of the logged in user in the database)
+        function setLocation(lat, lon) {
+            console.log("Current Position Updated onto the server");
+            var xmlhttp = new XMLHttpRequest();
+            xmlhttp.open('POST', 'setLocation.php', true);
+            xmlhttp.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+            // sends the information with the users userID.
+            xmlhttp.send('userID=<?php echo $_SESSION["login"] ?>&lat=' + lat + '&lon=' + lon)
+        }
+
+        // Changes the focused position to a specified user
+        function setMapPosition(user) {
+            var xmlhttp = new XMLHttpRequest();
+
+            xmlhttp.onreadystatechange = function() {
+                if (this.readyState == 4 && this.status == 200) {
+                    var response = JSON.parse(this.responseText);
+                    map.setCenter(new OpenLayers.LonLat(response.longitude, response.latitude).transform( fromProjection, toProjection), zoom);
+                }
+            }
+            xmlhttp.open("GET", "getLocation.php?u=" + user, true);
+            xmlhttp.send();
+        }
+
+    </script>
+
+    <button type="button" class="btn btn-primary" onclick="setMapPosition('<?php echo $_SESSION["login"] ?>')">Recenter onto yourself</button>
+    <form method="post" action="" class="form text-primary">
+        <br>
+        <table class="table table-hover">
+            <thead><tr><th>User ID</th><th>First name</th><th>Surname</th><th>Go to Friend</th></tr>
+            </thead>
+            <tbody>
+            <?php
+            // Display all friends
+            foreach ($view->usersTableDataSet as $userTableData) {
+                if (strtolower($userTableData->getUserID()) != strtolower($_SESSION["login"])) {
+                    $isFriend = false;
+                    foreach ($view->friendsTableDataSet as $friendsTableData) {
+                        if ((((strcmp($friendsTableData->getSender(), $userTableData->getUserID()) == 0) && (strcmp($friendsTableData->getRecipient(), $_SESSION['login'] == 0))) && ($friendsTableData->getStatus() == 1)) || (((strcmp($friendsTableData->getRecipient(), $userTableData->getUserID()) == 0) && (strcmp($friendsTableData->getSender(), $_SESSION['login'] == 0))) && ($friendsTableData->getStatus() == 1))) {
+                            $isFriend = true;
+                        }
+                    }
+                    if ($isFriend) {
+                        // provides the user to be able to easily view the friends marker.
+                        echo '<tr> <td>' . $userTableData->getUserID() . '</td> <td>' . $userTableData->getFirstName() . '</td> <td>' . $userTableData->getSurname() . '</td>';
+                        echo '<td><button type="button" class="btn btn-secondary" onclick="setMapPosition(`' . $userTableData->getUserID() . '`)">Recenter onto ' . $userTableData->getUserID() . '</button>';
+                        echo '</td>' . '</tr>';
+                    }
+                }
+            }
+            ?>
+            </tbody>
+        </table>
+    </form>
+
+<?php } ?>
+
+<?php require('template/footer.phtml') ?>

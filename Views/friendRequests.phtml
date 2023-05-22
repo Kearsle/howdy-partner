@@ -1,0 +1,47 @@
+<?php require("template/header.phtml") ?>
+<form method="post" action="" class="form text-primary">
+    <br>
+    <table class="table table-hover">
+        <thead>
+        <?php
+        // if the user is not logged in then a bold message will show notifying the that being logged in is a requirement.
+        if (isset(($_SESSION["login"]))) {
+            echo '<tr><th>User ID</th><th>First name</th><th>Surname</th><th>Email</th><th>Latitude</th><th>Longitude</th><th>Accept/Decline Friend Request</th></tr>';
+        } else {
+            echo '<h1>An Account is Required for Friend Requests</h1>';
+        }
+        ?>
+        </thead>
+        <tbody>
+        <?php
+        //Load friend requests
+        //Check if logged in
+
+        if (isset(($_SESSION["login"]))) {
+            // for loop through all users within the database
+            foreach ($view->usersTableDataSet as $userTableData) {
+                // continue if the user from the database is not the logged in user
+                if (strtolower($userTableData->getUserID()) != strtolower($_SESSION["login"])) {
+                    $isFriendRequest = false;
+                    // go through all friend requests. If there is one with the logged in user as the recipient and the database user as the sender then it is a friend request to the logged in user
+                    foreach ($view->friendRequestTableDataSet as $friendRequestTableData) {
+                        if ((strcmp($friendRequestTableData->getSender(), $userTableData->getUserID()) == 0) && ($friendRequestTableData->getStatus() == 0) && (strcmp($friendRequestTableData->getSender(), $_SESSION['login'] == 0))) {
+                            $isFriendRequest = true;
+                        }
+                    }
+                    // if a friend request is found display it
+                    if ($isFriendRequest) {
+                        echo '<tr> <td>' . $userTableData->getUserID() . '</td> <td>' . $userTableData->getFirstName() . '</td> <td>' . $userTableData->getSurname() . '</td> <td>' . $userTableData->getEmail() . '</td> <td>' . $userTableData->getLatitude() . '</td> <td>' . $userTableData->getLongitude() . '</td>';
+                        // Accept and decline friend request functionality
+                        echo '<td><input type="submit" class="btn btn-primary" name="acceptFriend" value="Accept ' . $userTableData->getUserID() . '">';
+                        echo '<input type="submit" class="btn btn-secondary" name="declineFriend" value="Decline ' . $userTableData->getUserID() . '">';
+                        echo '</td>' . '</tr>';
+                    }
+                }
+            }
+        }
+        ?>
+        </tbody>
+    </table>
+</form>
+<?php require("template/footer.phtml") ?>

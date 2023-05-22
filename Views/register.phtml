@@ -1,0 +1,34 @@
+<?php require('template/header.phtml') ?>
+
+<form method="post" action="" class="form text-primary">
+    <div class="form-group">
+        <label for="userID">UserID</label>
+        <input type="text" class="form-control" placeholder="UserID" name="userID" required>
+    </div>
+    <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" class="form-control" placeholder="Password" name="password" required>
+    </div>
+    <div class="form-group">
+        <label for="firstName">First Name</label>
+        <input type="text" class="form-control" placeholder="FirstName" name="firstName" required>
+    </div>
+    <div class="form-group">
+        <label for="surname">Surname</label>
+        <input type="surname" class="form-control" placeholder="Surname" name="surname" required>
+    </div>
+    <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" class="form-control" placeholder="Email" name="email" required>
+    </div>
+    <input type="submit" class="btn btn-secondary" name="registerbutton" value="Register">
+    <?php
+    if (isset($_SESSION["registerError"]))
+    {
+        echo "<p class='error'>" . $_SESSION["registerError"] . "</p>";
+        unset($_SESSION["registerError"]);
+    }
+    ?>
+</form>
+
+<?php require('template/footer.phtml') ?>

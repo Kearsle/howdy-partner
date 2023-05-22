@@ -1,0 +1,43 @@
+<?php require("template/header.phtml") ?>
+<form method="post" action="" class="form text-primary">
+    <br>
+    <table class="table table-hover">
+        <thead>
+        <?php
+        if (isset(($_SESSION["login"]))) {
+            echo '<tr><th>User ID</th><th>First name</th><th>Surname</th><th>Email</th><th>Remove Friend</th></tr>';
+        } else {
+            echo '<h1>An Account is Required for Friend List</h1>';
+        }
+        ?>
+        </thead>
+        <tbody>
+        <?php
+        // check if the user is logged in continue if so
+        if (isset(($_SESSION["login"]))) {
+            // loop through all of the users in the database
+            foreach ($view->usersTableDataSet as $userTableData) {
+                // check if the database user is not the logged in user
+                if (strtolower($userTableData->getUserID()) != strtolower($_SESSION["login"])) {
+                    $isFriend = false;
+                    // go through all of the successful friend requests that have the logged in user within.
+                    foreach ($view->friendsTableDataSet as $friendsTableData) {
+                        if ((((strcmp($friendsTableData->getSender(), $userTableData->getUserID()) == 0) && (strcmp($friendsTableData->getRecipient(), $_SESSION['login'] == 0))) && ($friendsTableData->getStatus() == 1)) || (((strcmp($friendsTableData->getRecipient(), $userTableData->getUserID()) == 0) && (strcmp($friendsTableData->getSender(), $_SESSION['login'] == 0))) && ($friendsTableData->getStatus() == 1))) {
+                            $isFriend = true;
+                        }
+                    }
+                    // if a friend is found, display it
+                    if ($isFriend) {
+                        echo '<tr> <td>' . $userTableData->getUserID() . '</td> <td>' . $userTableData->getFirstName() . '</td> <td>' . $userTableData->getSurname() . '</td> <td>' . $userTableData->getEmail() . '</td>';
+                        // Adding the functionality to remove a friend
+                        echo '<td><input type="submit" class="btn btn-danger" name="removeFriend" value="Remove ' . $userTableData->getUserID() . '">';
+                        echo '</td>' . '</tr>';
+                    }
+                }
+            }
+        }
+        ?>
+        </tbody>
+    </table>
+</form>
+<?php require("template/footer.phtml") ?>
